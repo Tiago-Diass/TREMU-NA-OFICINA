@@ -1,0 +1,23 @@
+{
+  "name": "tremu-na-oficina",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Jogo de inclusão social: identificar palavras de 4 letras em Língua Gestual Portuguesa, letra a letra.",
+  "scripts": {
+    "predev": "node scripts/download-model.js",
+    "prebuild": "node scripts/download-model.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.14",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}
