@@ -4,18 +4,19 @@ import GamePanel from './components/GamePanel.jsx';
 import AlphabetGuide from './components/AlphabetGuide.jsx';
 import { pickRandomWord } from './lib/words.js';
 
-const HOLD_FRAMES = 14;
+const HOLD_FRAMES = 14; // Número de frames que o gesto tem de ser mantido para ser aceite (ajusta conforme necessário)
 
 export default function App() {
-  const [started, setStarted] = useState(false);
-  const [round, setRound] = useState(() => newRound([]));
-  const [letterIndex, setLetterIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [solved, setSolved] = useState(0);
-  const [recognised, setRecognised] = useState({ letter: null, confidence: 0, progress: 0 });
-  const [showGuide, setShowGuide] = useState(false);
-  const historyRef = useRef([]);
+  const [started, setStarted] = useState(false); // Estado para controlar se o jogo começou
+  const [round, setRound] = useState(() => newRound([])); // Estado para a palavra atual, dica e letras
+  const [letterIndex, setLetterIndex] = useState(0); // Estado para a letra atual dentro da palavra
+  const [score, setScore] = useState(0); // Estado para a pontuação do jogador
+  const [solved, setSolved] = useState(0); // Estado para contar quantas palavras foram resolvidas na sequência atual
+  const [recognised, setRecognised] = useState({ letter: null, confidence: 0, progress: 0 }); // Estado para a letra reconhecida atualmente e sua confiança/progresso
+  const [showGuide, setShowGuide] = useState(false); // Estado para controlar a visibilidade do guia de gestos
+  const historyRef = useRef([]); // Ref para manter um histórico das palavras já usadas, evitando repetições
 
+  // Função para iniciar uma nova rodada, escolhendo uma palavra aleatória que ainda não foi usada
   function newRound(history) {
     const [word, hint] = pickRandomWord(history);
     return { word, hint, letters: word.split('') };
