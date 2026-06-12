@@ -28,9 +28,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ══════════════════════════════════════
-   SPLASH / ECRÃ INICIAL
-══════════════════════════════════════ */
 .splash {
   min-height: 100dvh;
   display: flex;
@@ -161,9 +158,6 @@ body {
   line-height: 1.5;
 }
 
-/* ══════════════════════════════════════
-   ECRÃ DE JOGO
-══════════════════════════════════════ */
 .game-shell {
   height: 100dvh;
   display: flex;
@@ -174,7 +168,6 @@ body {
   margin: 0 auto;
 }
 
-/* ── HUD TOPO ── */
 .hud-top {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -251,7 +244,6 @@ body {
   color: var(--fg-dim);
 }
 
-/* ── CÂMARA ── */
 .cam-wrap {
   flex: 1;
   position: relative;
@@ -272,7 +264,6 @@ body {
   opacity: 0; pointer-events: none;
 }
 
-/* Badge letra alvo — canto inferior esquerdo */
 .cam-target-badge {
   position: absolute;
   bottom: 16px;
@@ -288,7 +279,6 @@ body {
   gap: 0;
 }
 
-/* Badge detetado — canto inferior direito */
 .cam-detected-badge {
   position: absolute;
   bottom: 16px;
@@ -329,7 +319,6 @@ body {
 .cam-target-badge .cam-target-letter { color: var(--accent2); }
 .cam-detected-badge.match .cam-target-letter { color: var(--ok); }
 
-/* Barra de progresso no fundo da câmara */
 .cam-progress-bar {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -344,7 +333,6 @@ body {
   box-shadow: 0 0 12px var(--accent);
 }
 
-/* Loading overlay */
 .cam-overlay {
   position: absolute; inset: 0;
   display: flex;
@@ -372,7 +360,6 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── PAINEL INFERIOR ── */
 .bottom-panel {
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -439,7 +426,6 @@ body {
   transition: width .08s linear;
 }
 
-/* Pista */
 .hint-toggle {
   background: none;
   border: none;
@@ -467,9 +453,6 @@ body {
   font-weight: 500;
 }
 
-/* ══════════════════════════════════════
-   GUIA (BOTTOM SHEET)
-══════════════════════════════════════ */
 .guide-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);

@@ -1,7 +1,3 @@
-// 4-letter pt-PT words restricted to letters supported by the classifier:
-// A, B, C, D, F, I, L, O, U, V, W, Y.
-// Each entry is a [word, hint] pair shown to the player.
-
 export const WORDS = [
   ['BOLA', 'Brincamos com ela no recreio'],
   ['VILA', 'Mais pequena que uma cidade'],
@@ -28,8 +24,42 @@ export const WORDS = [
   ['ALFA', 'Primeira letra do alfabeto grego'],
   ['CACO', 'Pedaço de loiça partida'],
   ['CALA', 'Verbo: faz silêncio!'],
+  ['BOLO', 'Come-se em festas de aniversário'],
+  ['OVAL', 'Forma do ovo, mais longa que redonda'],
+  ['UIVO', 'Som que o lobo faz à noite'],
+  ['VAIA', 'Gritos de desagrado do público'],
+  ['VIVA', 'Grito de alegria numa festa'],
+  ['VIVO', 'Tem vida, não está morto'],
+  ['VALA', 'Buraco longo ao lado da estrada'],
+  ['BICA', 'Café curto, muito pedido em Lisboa'],
+  ['BOIA', 'Ajuda a flutuar na piscina'],
+  ['BUFO', 'Ave da noite que faz "uh-uh"'],
+  ['CALO', 'Pele dura que se forma no pé'],
+  ['CAVA', 'Faz buracos no jardim com a pá'],
+  ['CAVO', 'Eu faço um buraco no chão'],
+  ['COLA', 'Junta dois pedaços de papel'],
+  ['COLO', 'Onde o bebé se senta, nos braços'],
+  ['DADA', 'Já foi oferecida, no feminino'],
+  ['DAVA', 'No passado, ele oferecia: ele ___'],
+  ['DIVO', 'Cantor de ópera muito famoso'],
+  ['FADA', 'Personagem mágica dos contos infantis'],
+  ['FAIA', 'Árvore com tronco claro e liso'],
+  ['FALA', 'O que fazemos quando conversamos'],
+  ['FAVO', 'Onde as abelhas guardam o mel'],
+  ['FICO', 'Eu permaneço num lugar'],
+  ['FILO', 'Massa muito fina usada em pastéis'],
+  ['FOCO', 'Centro das atenções'],
+  ['FOFO', 'Muito suave, como um peluche'],
+  ['LIDO', 'Um livro que já foi visto e lido'],
+  ['LOBA', 'Fêmea do lobo'],
+  ['LODO', 'Lama mole no fundo do rio'],
+  ['YOYO', 'Brinquedo que sobe e desce na corda'],
+  ['WIFI', 'Ligação à internet sem cabos'],
+  ['CAIO', 'Eu caio no chão sem querer'],
+  ['BAIO', 'Cor de um cavalo castanho-claro'],
 ];
 
+// Função para escolher uma palavra aleatória, evitando as mais recentes para não repetir muito
 export function pickRandomWord(history = []) {
   const recent = new Set(history.slice(-6));
   const pool = WORDS.filter(([w]) => !recent.has(w));

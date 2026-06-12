@@ -22,6 +22,7 @@ export default function App() {
     return { word, hint, letters: word.split('') };
   }
 
+  // Função para avançar para a próxima letra ou palavra, atualizando a pontuação e o histórico
   const advance = useCallback(() => {
     if (letterIndex + 1 < round.letters.length) {
       setLetterIndex((i) => i + 1);
@@ -35,19 +36,23 @@ export default function App() {
     }
   }, [letterIndex, round]);
 
+  // Função para saltar a palavra atual, adicionando-a ao histórico e iniciando uma nova rodada
   const skip = useCallback(() => {
     historyRef.current = [...historyRef.current, round.word].slice(-20);
     setRound(newRound(historyRef.current));
     setLetterIndex(0);
   }, [round]);
 
+  // A letra alvo para o gesto atual é determinada pela letraIndex dentro da palavra da rodada
   const target = round.letters[letterIndex];
 
+  // Função chamada quando a câmara reconhece um gesto, atualizando o estado de reconhecimento e avançando se o gesto estiver correto
   const onRecognition = useCallback((info) => {
     setRecognised(info);
     if (info.committed && info.committed === target) advance();
   }, [advance, target]);
 
+  // Se o jogo ainda não começou, mostra a tela de início com instruções e opção para ver o guia de gestos
   if (!started) {
     return (
       <div className="splash">
@@ -99,7 +104,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* Câmara com overlay da letra alvo */}
+      // Vista da câmara, onde o jogador faz os gestos e recebe feedback visual sobre o reconhecimento
       <CameraView
         target={target}
         holdFrames={HOLD_FRAMES}
@@ -107,7 +112,7 @@ export default function App() {
         recognised={recognised}
       />
 
-      {/* Painel inferior */}
+      // Painel inferior com a palavra, dica e letra atual, além do guia de gestos quando solicitado
       <GamePanel
         word={round.word}
         hint={round.hint}
