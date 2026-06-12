@@ -1,37 +1,52 @@
 import React from 'react';
 
-const ENTRIES = [
-  { letter: 'A', desc: 'Punho fechado, polegar ao lado do indicador.' },
-  { letter: 'B', desc: 'Quatro dedos unidos para cima, polegar dobrado sobre a palma.' },
-  { letter: 'C', desc: 'Mão curvada em forma de C, dedos e polegar arqueados.' },
-  { letter: 'D', desc: 'Indicador para cima, polegar toca nos restantes dedos dobrados.' },
-  { letter: 'F', desc: 'Polegar e indicador em círculo; médio, anelar e mindinho esticados.' },
-  { letter: 'I', desc: 'Punho fechado com o mindinho esticado para cima.' },
-  { letter: 'L', desc: 'Polegar e indicador formam um L; restantes dedos fechados.' },
-  { letter: 'O', desc: 'Todos os dedos curvados a tocar no polegar, criando um O.' },
-  { letter: 'U', desc: 'Indicador e médio juntos e esticados para cima.' },
-  { letter: 'V', desc: 'Indicador e médio esticados em V afastados.' },
-  { letter: 'W', desc: 'Indicador, médio e anelar para cima; polegar segura o mindinho.' },
-  { letter: 'Y', desc: 'Polegar e mindinho esticados; restantes dedos dobrados.' },
+const SUPPORTED_SIGNS = [
+  ['A', 'Punho fechado, polegar ao lado do indicador.'],
+  ['B', 'Quatro dedos unidos para cima, polegar dobrado sobre a palma.'],
+  ['C', 'Mão curvada em forma de C, dedos e polegar arqueados.'],
+  ['D', 'Indicador para cima, polegar toca nos restantes dedos dobrados.'],
+  ['F', 'Polegar e indicador em círculo; médio, anelar e mindinho esticados.'],
+  ['I', 'Punho fechado com o mindinho esticado para cima.'],
+  ['L', 'Polegar e indicador formam um L; restantes dedos fechados.'],
+  ['O', 'Todos os dedos curvados a tocar no polegar, criando um O.'],
+  ['U', 'Indicador e médio juntos e esticados para cima.'],
+  ['V', 'Indicador e médio esticados em V afastados.'],
+  ['W', 'Indicador, médio e anelar para cima; polegar segura o mindinho.'],
+  ['Y', 'Polegar e mindinho esticados; restantes dedos dobrados.'],
 ];
 
+function SignCard({ symbol, description }) {
+  return (
+    <article className="guide-item">
+      <span className="guide-letter">{symbol}</span>
+      <span className="guide-desc">{description}</span>
+    </article>
+  );
+}
+
 export default function AlphabetGuide({ onClose }) {
+  const stop = (event) => event.stopPropagation();
+
   return (
     <div className="guide-backdrop" onClick={onClose}>
-      <div className="guide-sheet" onClick={e => e.stopPropagation()}>
-        <div className="guide-header">
+      <section className="guide-sheet" onClick={stop}>
+        <header className="guide-header">
           <span>Gestos suportados</span>
-          <button className="guide-close" onClick={onClose}>✕</button>
-        </div>
+          <button className="guide-close" onClick={onClose}>
+            ✕
+          </button>
+        </header>
+
         <div className="guide-grid">
-          {ENTRIES.map(({ letter, desc }) => (
-            <div key={letter} className="guide-item">
-              <span className="guide-letter">{letter}</span>
-              <span className="guide-desc">{desc}</span>
-            </div>
+          {SUPPORTED_SIGNS.map(([symbol, description]) => (
+            <SignCard
+              key={symbol}
+              symbol={symbol}
+              description={description}
+            />
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

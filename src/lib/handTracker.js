@@ -1,101 +1,150 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 
-const MODEL_URL = '/models/hand_landmarker.task';
-const WASM_DIR = '/wasm';
+const PATHS = {
+  model: '/models/hand_landmarker.task',
+  wasm: '/wasm',
+};
 
-let landmarkerPromise = null;
+const CAMERA_SETTINGS = {
+  facingMode: 'user',
+  width: { ideal: 1280 },
+  height: { ideal: 960 },
+  aspectRatio: { ideal: 4 / 3 },
+  frameRate: { ideal: 30 },
+};
 
-// O runtime WASM do MediaPipe escreve logs internos na consola em formato
-// glog — ex.: "W0611 18:06:40.044000 2136208 gl_context.cc:1118] OpenGL error
-// checking is disabled". São informativos/avisos internos conhecidos (versão
-// do GL, NORM_RECT sem IMAGE_DIMENSIONS, etc.), não indicam problemas na app
-// e não há opção pública para os desligar. Filtramos APENAS linhas com este
-// prefixo exato — erros reais nunca têm este formato e continuam visíveis.
-const MEDIAPIPE_GLOG = /^[IWEF]\d{4}\s+\d{1,2}:\d{2}:\d{2}\.\d+\s+\d+\s+\S+\.cc:\d+\]/;
-let consoleFiltered = false;
+let cachedDetector = null;
+let consolePatched = false;
 
-function filterMediapipeConsoleNoise() {
-  if (consoleFiltered) return;
-  consoleFiltered = true;
-  for (const level of ['log', 'info', 'warn', 'error']) {
-    const original = console[level].bind(console);
-    console[level] = (...args) => {
-      if (typeof args[0] === 'string' && MEDIAPIPE_GLOG.test(args[0])) return;
+const LOG_PATTERN =
+  /^[IWEF]\d{4}\s+\d{1,2}:\d{2}:\d{2}\.\d+\s+\d+\s+\S+\.cc:\d+\]/;
+
+function suppressMediapipeLogs() {
+  if (consolePatched) return;
+
+  consolePatched = true;
+
+  ['log', 'info', 'warn', 'error'].forEach((method) => {
+    const original = console[method].bind(console);
+
+    console[method] = (...args) => {
+      const first = args[0];
+
+      if (
+        typeof first === 'string' &&
+        LOG_PATTERN.test(first)
+      ) {
+        return;
+      }
+
       original(...args);
     };
-  }
+  });
 }
 
-function buildOptions(delegate) {
+function detectorOptions(delegateType) {
   return {
-    baseOptions: { modelAssetPath: MODEL_URL, delegate },
     runningMode: 'VIDEO',
     numHands: 1,
+
+    baseOptions: {
+      modelAssetPath: PATHS.model,
+      delegate: delegateType,
+    },
+
     minHandDetectionConfidence: 0.5,
     minHandPresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
   };
 }
 
-export function loadHandLandmarker() {
-  if (landmarkerPromise) return landmarkerPromise;
-  filterMediapipeConsoleNoise();
-  landmarkerPromise = (async () => {
-    const vision = await FilesetResolver.forVisionTasks(WASM_DIR);
-    try {
-      return await HandLandmarker.createFromOptions(vision, buildOptions('GPU'));
-    } catch (e) {
-      // Muitos browsers/máquinas não têm o delegado GPU disponível — recuar
-      // para CPU em vez de deixar a aplicação rebentar.
-      console.warn('[handTracker] GPU indisponível, a usar CPU:', e?.message || e);
-      return HandLandmarker.createFromOptions(vision, buildOptions('CPU'));
-    }
-  })();
-  // Se o carregamento falhar, permitir nova tentativa num próximo arranque.
-  landmarkerPromise.catch(() => { landmarkerPromise = null; });
-  return landmarkerPromise;
+async function createDetector(delegate) {
+  const vision = await FilesetResolver.forVisionTasks(PATHS.wasm);
+
+  return HandLandmarker.createFromOptions(
+    vision,
+    detectorOptions(delegate)
+  );
 }
 
-export async function attachCamera(videoEl) {
-  if (!videoEl) throw new Error('Elemento de vídeo indisponível');
-  // Pedimos resolução HD com a câmara frontal mas mantemos a proporção 4:3.
-  // IMPORTANTE: o classificador geométrico usa landmarks normalizados (0-1),
-  // que dependem da proporção da imagem. Foi afinado para 4:3 (como os antigos
-  // 640x480), por isso mantemos 4:3 — só aumentamos a resolução. Mudar para
-  // 16:9 distorceria a geometria e os gestos passariam a ser lidos errado.
-  const baseVideo = {
-    facingMode: 'user',
-    width: { ideal: 1280 },
-    height: { ideal: 960 },
-    aspectRatio: { ideal: 4 / 3 },
-    frameRate: { ideal: 30 },
-  };
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: baseVideo, audio: false });
-  } catch (e) {
-    // Se a câmara não suportar HD, recuar para constraints mínimas em vez de falhar.
-    console.warn('[handTracker] HD indisponível, a usar resolução por defeito:', e?.message || e);
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+export async function loadHandLandmarker() {
+  if (cachedDetector) {
+    return cachedDetector;
   }
-  videoEl.srcObject = stream;
-  videoEl.muted = true;
-  videoEl.playsInline = true;
-  await new Promise((resolve) => {
-    if (videoEl.readyState >= 1) return resolve();
-    videoEl.addEventListener('loadedmetadata', () => resolve(), { once: true });
+
+  suppressMediapipeLogs();
+
+  cachedDetector = (async () => {
+    try {
+      return await createDetector('GPU');
+    } catch (error) {
+      console.warn(
+        '[tracker] GPU não disponível, a usar CPU.'
+      );
+
+      return createDetector('CPU');
+    }
+  })();
+
+  cachedDetector.catch(() => {
+    cachedDetector = null;
   });
-  try {
-    await videoEl.play();
-  } catch (e) {
-    // Em StrictMode (duplo mount em dev) o pedido de play pode ser
-    // interrompido por um remount — isso é benigno, ignorar.
-    if (e?.name !== 'AbortError') throw e;
+
+  return cachedDetector;
+}
+
+async function waitMetadata(videoElement) {
+  if (videoElement.readyState >= 1) {
+    return;
   }
+
+  await new Promise((resolve) => {
+    videoElement.addEventListener(
+      'loadedmetadata',
+      resolve,
+      { once: true }
+    );
+  });
+}
+
+export async function attachCamera(videoElement) {
+  if (!videoElement) {
+    throw new Error('Elemento vídeo inválido');
+  }
+
+  let stream;
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: CAMERA_SETTINGS,
+      audio: false,
+    });
+  } catch {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' },
+      audio: false,
+    });
+  }
+
+  videoElement.srcObject = stream;
+  videoElement.muted = true;
+  videoElement.playsInline = true;
+
+  await waitMetadata(videoElement);
+
+  try {
+    await videoElement.play();
+  } catch (error) {
+    if (error?.name !== 'AbortError') {
+      throw error;
+    }
+  }
+
   return stream;
 }
 
 export function stopCamera(stream) {
-  if (!stream) return;
-  stream.getTracks().forEach((t) => t.stop());
+  stream?.getTracks().forEach((track) => {
+    track.stop();
+  });
 }

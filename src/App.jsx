@@ -80,7 +80,7 @@ export default function App() {
 
   return (
     <div className="game-shell">
-      {/* HUD topo */}
+      {/* HUD do topo */}
       <div className="hud-top">
         <button className="hud-btn" onClick={() => setShowGuide(true)} title="Ver gestos">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +104,7 @@ export default function App() {
         </button>
       </div>
 
-      // Vista da câmara, onde o jogador faz os gestos e recebe feedback visual sobre o reconhecimento
+      {/* Vista da câmara, onde o jogador faz os gestos e recebe feedback visual sobre o reconhecimento */}
       <CameraView
         target={target}
         holdFrames={HOLD_FRAMES}
@@ -112,7 +112,7 @@ export default function App() {
         recognised={recognised}
       />
 
-      // Painel inferior com a palavra, dica e letra atual, além do guia de gestos quando solicitado
+      {/* Painel inferior com a palavra, dica e letra atual, além do guia de gestos quando solicitado */}
       <GamePanel
         word={round.word}
         hint={round.hint}
