@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import CameraView from './components/CameraView.jsx';
 import GamePanel from './components/GamePanel.jsx';
 import AlphabetGuide from './components/AlphabetGuide.jsx';
@@ -44,74 +44,77 @@ export default function App() {
 
   const onRecognition = useCallback((info) => {
     setRecognised(info);
-    if (info.committed && info.committed === target) {
-      advance();
-    }
+    if (info.committed && info.committed === target) advance();
   }, [advance, target]);
 
-  return (
-    <div className="app">
-      <header className="header">
-        <div>
-          <h1 className="brand">TREMU NA OFICINA</h1>
-          <p className="tagline">Língua Gestual Portuguesa — Jogo de Inclusão Social</p>
+  if (!started) {
+    return (
+      <div className="splash">
+        <div className="splash-inner">
+          <div className="splash-logo">
+            <span className="splash-g">G</span>
+            <span className="splash-rest">estos</span>
+          </div>
+          <p className="splash-sub">Aprende o alfabeto da Língua Gestual Portuguesa jogando</p>
+          <div className="splash-how">
+            <div className="how-step"><span className="how-num">1</span><span>Aparece uma palavra de 4 letras</span></div>
+            <div className="how-step"><span className="how-num">2</span><span>Faz o gesto de cada letra à câmara</span></div>
+            <div className="how-step"><span className="how-num">3</span><span>Mantém firme até a letra acender</span></div>
+          </div>
+          <div className="splash-actions">
+            <button className="btn-start" onClick={() => setStarted(true)}>Começar a jogar</button>
+            <button className="btn-guide" onClick={() => setShowGuide(true)}>Ver gestos LGP</button>
+          </div>
+          <p className="splash-note">Câmara usada só no teu dispositivo — nenhum dado é enviado</p>
         </div>
-        <div className="header-right">
-          <div>STAND-ALONE · SEM SERVIÇOS EXTERNOS</div>
-          <div style={{ color: 'var(--neon-g)', marginTop: 2 }}>● SISTEMA ATIVO</div>
-        </div>
-      </header>
+        {showGuide && <AlphabetGuide onClose={() => setShowGuide(false)} />}
+      </div>
+    );
+  }
 
-      {!started ? (
-        <Intro onStart={() => setStarted(true)} onGuide={() => setShowGuide(true)} />
-      ) : (
-        <main className="layout">
-          <CameraView
-            target={target}
-            holdFrames={HOLD_FRAMES}
-            onRecognition={onRecognition}
-          />
-          <GamePanel
-            word={round.word}
-            hint={round.hint}
-            letterIndex={letterIndex}
-            score={score}
-            solved={solved}
-            recognised={recognised}
-            onSkip={skip}
-            onGuide={() => setShowGuide(true)}
-          />
-        </main>
-      )}
+  return (
+    <div className="game-shell">
+      {/* HUD topo */}
+      <div className="hud-top">
+        <button className="hud-btn" onClick={() => setShowGuide(true)} title="Ver gestos">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </button>
+        <div className="hud-score">
+          <span className="hud-score-val">{score}</span>
+          <span className="hud-score-label">pts</span>
+        </div>
+        <div className="hud-streak">
+          {Array.from({ length: Math.min(solved, 5) }).map((_, i) => (
+            <span key={i} className="hud-star">★</span>
+          ))}
+          {solved === 0 && <span className="hud-streak-empty">0 palavras</span>}
+        </div>
+        <button className="hud-btn" onClick={skip} title="Saltar palavra">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Câmara com overlay da letra alvo */}
+      <CameraView
+        target={target}
+        holdFrames={HOLD_FRAMES}
+        onRecognition={onRecognition}
+        recognised={recognised}
+      />
+
+      {/* Painel inferior */}
+      <GamePanel
+        word={round.word}
+        hint={round.hint}
+        letterIndex={letterIndex}
+        recognised={recognised}
+      />
 
       {showGuide && <AlphabetGuide onClose={() => setShowGuide(false)} />}
-
-      <footer className="footer">
-        <span>REACT · MEDIAPIPE · WEBASSEMBLY · 100% LOCAL</span>
-        <span className="footer-tag">LGP v0.1.0</span>
-      </footer>
     </div>
-  );
-}
-
-function Intro({ onStart, onGuide }) {
-  return (
-    <section className="intro">
-      <h2>BEM-VINDO(A)</h2>
-      <p>
-        Vai aparecer uma palavra de quatro letras. Soletra-a letra a letra à frente da câmara
-        usando o alfabeto manual da <strong style={{ color: 'var(--fg)' }}>LGP</strong>. 
-        Quando o sistema reconhecer e mantiveres o gesto por um instante, a letra acende e passas à seguinte.
-      </p>
-      <ul>
-        <li>Mantém uma só mão à frente da câmara, com boa luz</li>
-        <li>Letras suportadas: A, B, C, D, F, I, L, O, U, V, W, Y</li>
-        <li>Letras com movimento (J, Z) não entram nesta versão</li>
-      </ul>
-      <div className="intro-actions">
-        <button className="primary" onClick={onStart}>Começar</button>
-        <button className="ghost" onClick={onGuide}>Ver alfabeto</button>
-      </div>
-    </section>
   );
 }
