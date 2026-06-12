@@ -23,7 +23,6 @@ export default function AlphabetGuide({ onClose }) {
           <span>Gestos suportados</span>
           <button className="guide-close" onClick={onClose}>✕</button>
         </div>
-        <p className="guide-note">Apenas sinais estáticos a uma mão. J e Z (com movimento) ficam para a próxima versão.</p>
         <div className="guide-grid">
           {ENTRIES.map(({ letter, desc }) => (
             <div key={letter} className="guide-item">
