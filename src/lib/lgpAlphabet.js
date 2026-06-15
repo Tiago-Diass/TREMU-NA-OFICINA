@@ -1,192 +1,306 @@
-const LM = {
+const HAND = {
   WRIST: 0,
-  THUMB_CMC: 1, THUMB_MCP: 2, THUMB_IP: 3, THUMB_TIP: 4,
-  INDEX_MCP: 5, INDEX_PIP: 6, INDEX_DIP: 7, INDEX_TIP: 8,
-  MIDDLE_MCP: 9, MIDDLE_PIP: 10, MIDDLE_DIP: 11, MIDDLE_TIP: 12,
-  RING_MCP: 13, RING_PIP: 14, RING_DIP: 15, RING_TIP: 16,
-  PINKY_MCP: 17, PINKY_PIP: 18, PINKY_DIP: 19, PINKY_TIP: 20,
+
+  T1: 1, T2: 2, T3: 3, T4: 4,
+
+  I1: 5, I2: 6, I3: 7, I4: 8,
+
+  M1: 9, M2: 10, M3: 11, M4: 12,
+
+  R1: 13, R2: 14, R3: 15, R4: 16,
+
+  P1: 17, P2: 18, P3: 19, P4: 20,
 };
 
-export const SUPPORTED_LETTERS = ['A','B','C','D','F','I','L','O','U','V','W','Y'];
+export const SUPPORTED_LETTERS = [
+  'A', 'B', 'C', 'D', 'F', 'I',
+  'L', 'O', 'U', 'V', 'W', 'Y'
+];
 
-function sub(a, b) { return [a.x - b.x, a.y - b.y, (a.z || 0) - (b.z || 0)]; }
-function len(v) { return Math.hypot(v[0], v[1], v[2]); }
-function dot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
-function dist(a, b) { return len(sub(a, b)); }
-function angleAt(a, b, c) {
-  const v1 = sub(a, b), v2 = sub(c, b);
-  const m = len(v1) * len(v2) + 1e-9;
-  const cos = Math.max(-1, Math.min(1, dot(v1, v2) / m));
-  return (Math.acos(cos) * 180) / Math.PI;
-}
+const vec = (a, b) => [
+  a.x - b.x,
+  a.y - b.y,
+  (a.z ?? 0) - (b.z ?? 0)
+];
 
-function fingerAngles(lm) {
-  return {
-    thumb: angleAt(lm[LM.THUMB_MCP], lm[LM.THUMB_IP], lm[LM.THUMB_TIP]),
-    index: angleAt(lm[LM.INDEX_MCP], lm[LM.INDEX_PIP], lm[LM.INDEX_TIP]),
-    middle: angleAt(lm[LM.MIDDLE_MCP], lm[LM.MIDDLE_PIP], lm[LM.MIDDLE_TIP]),
-    ring: angleAt(lm[LM.RING_MCP], lm[LM.RING_PIP], lm[LM.RING_TIP]),
-    pinky: angleAt(lm[LM.PINKY_MCP], lm[LM.PINKY_PIP], lm[LM.PINKY_TIP]),
-  };
-}
+const norm = v => Math.sqrt(v.reduce((s, n) => s + n * n, 0));
 
-function extended(angles) {
-  return {
-    thumb: angles.thumb > 150,
-    index: angles.index > 160,
-    middle: angles.middle > 160,
-    ring: angles.ring > 160,
-    pinky: angles.pinky > 160,
-  };
-}
+const scalar = (a, b) =>
+  a.reduce((s, n, i) => s + n * b[i], 0);
 
-function palmSize(lm) {
-  return dist(lm[LM.WRIST], lm[LM.MIDDLE_MCP]) || 1e-6;
-}
+const gap = (a, b) => norm(vec(a, b));
 
-function averageTipMcpRatio(lm) {
-  const p = palmSize(lm);
-  const tips = [
-    [LM.INDEX_TIP, LM.INDEX_MCP],
-    [LM.MIDDLE_TIP, LM.MIDDLE_MCP],
-    [LM.RING_TIP, LM.RING_MCP],
-    [LM.PINKY_TIP, LM.PINKY_MCP],
+const bend = (a, b, c) => {
+  const u = vec(a, b);
+  const v = vec(c, b);
+
+  const cosine =
+    scalar(u, v) /
+    ((norm(u) * norm(v)) + 1e-9);
+
+  return (
+    Math.acos(
+      Math.max(-1, Math.min(1, cosine))
+    ) * 180
+  ) / Math.PI;
+};
+
+const palmReference = points =>
+  gap(points[HAND.WRIST], points[HAND.M1]) || 1e-6;
+
+const fingerMetrics = points => ({
+  thumb: bend(points[HAND.T2], points[HAND.T3], points[HAND.T4]),
+  index: bend(points[HAND.I1], points[HAND.I2], points[HAND.I4]),
+  middle: bend(points[HAND.M1], points[HAND.M2], points[HAND.M4]),
+  ring: bend(points[HAND.R1], points[HAND.R2], points[HAND.R4]),
+  pinky: bend(points[HAND.P1], points[HAND.P2], points[HAND.P4]),
+});
+
+const fingerState = metrics => ({
+  thumb: metrics.thumb > 150,
+  index: metrics.index > 160,
+  middle: metrics.middle > 160,
+  ring: metrics.ring > 160,
+  pinky: metrics.pinky > 160,
+});
+
+const ratioMeasure = points => {
+  const scale = palmReference(points);
+
+  const pairs = [
+    [HAND.I4, HAND.I1],
+    [HAND.M4, HAND.M1],
+    [HAND.R4, HAND.R1],
+    [HAND.P4, HAND.P1],
   ];
-  let s = 0;
-  for (const [tip, mcp] of tips) s += dist(lm[tip], lm[mcp]) / p;
-  return s / tips.length;
+
+  const total = pairs.reduce(
+    (sum, [tip, root]) =>
+      sum + gap(points[tip], points[root]) / scale,
+    0
+  );
+
+  return total / pairs.length;
+};
+
+const match = (value, target, tolerance) =>
+  Math.max(0, 1 - Math.abs(value - target) / tolerance);
+
+const minimum = (value, threshold, margin) =>
+  value >= threshold
+    ? 1
+    : Math.max(0, 1 - (threshold - value) / margin);
+
+const maximum = (value, threshold, margin) =>
+  value <= threshold
+    ? 1
+    : Math.max(0, 1 - (value - threshold) / margin);
+
+function evaluateLetter(letter, points, open, metrics, ratio) {
+  const scale = palmReference(points);
+
+  const thumbIndex =
+    gap(points[HAND.T4], points[HAND.I4]) / scale;
+
+  const thumbMiddle =
+    gap(points[HAND.T4], points[HAND.M1]) / scale;
+
+  const spread =
+    gap(points[HAND.I4], points[HAND.M4]) / scale;
+
+  const thumbReach =
+    gap(points[HAND.T4], points[HAND.I1]) / scale;
+
+  const thumbVector =
+    vec(points[HAND.T4], points[HAND.T2]);
+
+  const indexVector =
+    vec(points[HAND.I4], points[HAND.I1]);
+
+  const angle =
+    Math.acos(
+      Math.max(
+        -1,
+        Math.min(
+          1,
+          scalar(thumbVector, indexVector) /
+            ((norm(thumbVector) * norm(indexVector)) + 1e-9)
+        )
+      )
+    ) *
+    180 /
+    Math.PI;
+
+  const rules = {
+    B: [
+      open.index && open.middle && open.ring && open.pinky ? 1 : 0,
+      maximum(metrics.thumb, 150, 30)
+    ],
+
+    D: [
+      open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      maximum(thumbReach, 0.7, 0.3)
+    ],
+
+    F: [
+      open.middle && open.ring && open.pinky ? 1 : 0,
+      maximum(thumbIndex, 0.35, 0.3)
+    ],
+
+    I: [
+      open.pinky ? 1 : 0,
+      !open.index && !open.middle && !open.ring ? 1 : 0
+    ],
+
+    L: [
+      open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      minimum(thumbReach, 0.75, 0.35),
+      match(angle, 90, 45)
+    ],
+
+    U: [
+      open.index && open.middle && !open.ring && !open.pinky ? 1 : 0,
+      maximum(spread, 0.4, 0.3)
+    ],
+
+    V: [
+      open.index && open.middle && !open.ring && !open.pinky ? 1 : 0,
+      minimum(spread, 0.55, 0.3)
+    ],
+
+    W: [
+      open.index && open.middle && open.ring && !open.pinky ? 1 : 0,
+      1
+    ],
+
+    Y: [
+      open.thumb && open.pinky ? 1 : 0,
+      !open.index && !open.middle && !open.ring ? 1 : 0
+    ],
+
+    O: [
+      !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      match(ratio, 0.65, 0.35),
+      maximum(thumbIndex, 0.5, 0.3)
+    ],
+
+    C: [
+      !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      minimum(ratio, 0.85, 0.25),
+      minimum(thumbIndex, 0.45, 0.3)
+    ],
+
+    A: [
+      !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      maximum(ratio, 0.55, 0.2),
+      minimum(thumbMiddle, 0.6, 0.3)
+    ],
+  };
+
+  return rules[letter] || [0];
 }
 
-function near(value, target, tolerance) {
-  return Math.max(0, 1 - Math.abs(value - target) / tolerance);
-}
-function above(value, threshold, slack) {
-  if (value >= threshold) return 1;
-  return Math.max(0, 1 - (threshold - value) / slack);
-}
-function below(value, threshold, slack) {
-  if (value <= threshold) return 1;
-  return Math.max(0, 1 - (value - threshold) / slack);
-}
-
-function scoreLetter(letter, lm, ext, angles, ratio) {
-  const p = palmSize(lm);
-  const thumbIndexD = dist(lm[LM.THUMB_TIP], lm[LM.INDEX_TIP]) / p;
-  const thumbMiddleD = dist(lm[LM.THUMB_TIP], lm[LM.MIDDLE_MCP]) / p;
-  const indexMiddleD = dist(lm[LM.INDEX_TIP], lm[LM.MIDDLE_TIP]) / p;
-  const thumbOutFromPalm = dist(lm[LM.THUMB_TIP], lm[LM.INDEX_MCP]) / p;
-  const thumbVec = sub(lm[LM.THUMB_TIP], lm[LM.THUMB_MCP]);
-  const indexVec = sub(lm[LM.INDEX_TIP], lm[LM.INDEX_MCP]);
-  const cosTI = dot(thumbVec, indexVec) / (len(thumbVec) * len(indexVec) + 1e-9);
-  const thumbIndexAngle = (Math.acos(Math.max(-1, Math.min(1, cosTI))) * 180) / Math.PI;
-
-  switch (letter) {
-    case 'B':
-      return [
-        ext.index && ext.middle && ext.ring && ext.pinky ? 1 : 0,
-        below(angles.thumb, 150, 30),
-      ];
-    case 'D':
-      return [
-        ext.index && !ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        below(thumbOutFromPalm, 0.7, 0.3),
-      ];
-    case 'F':
-      return [
-        ext.middle && ext.ring && ext.pinky ? 1 : 0,
-        below(thumbIndexD, 0.35, 0.3),
-      ];
-    case 'I':
-      return [
-        ext.pinky ? 1 : 0,
-        !ext.index && !ext.middle && !ext.ring ? 1 : 0,
-      ];
-    case 'L':
-      return [
-        ext.index && !ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        above(thumbOutFromPalm, 0.75, 0.35),
-        near(thumbIndexAngle, 90, 45),
-      ];
-    case 'U':
-      return [
-        ext.index && ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        below(indexMiddleD, 0.4, 0.3),
-      ];
-    case 'V':
-      return [
-        ext.index && ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        above(indexMiddleD, 0.55, 0.3),
-      ];
-    case 'W':
-      return [
-        ext.index && ext.middle && ext.ring && !ext.pinky ? 1 : 0,
-        1,
-      ];
-    case 'Y':
-      return [
-        ext.thumb && ext.pinky ? 1 : 0,
-        !ext.index && !ext.middle && !ext.ring ? 1 : 0,
-      ];
-    case 'O':
-      return [
-        !ext.index && !ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        near(ratio, 0.65, 0.35),
-        below(thumbIndexD, 0.5, 0.3),
-      ];
-    case 'C':
-      return [
-        !ext.index && !ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        above(ratio, 0.85, 0.25),
-        above(thumbIndexD, 0.45, 0.3),
-      ];
-    case 'A':
-      return [
-        !ext.index && !ext.middle && !ext.ring && !ext.pinky ? 1 : 0,
-        below(ratio, 0.55, 0.2),
-        above(thumbMiddleD, 0.6, 0.3),
-      ];
-    default:
-      return [0];
+export function classify(points) {
+  if (!points || points.length < 21) {
+    return {
+      letter: null,
+      confidence: 0,
+      ext: null
+    };
   }
-}
 
-export function classify(lm) {
-  if (!lm || lm.length < 21) return { letter: null, confidence: 0, ext: null };
-  const angles = fingerAngles(lm);
-  const ext = extended(angles);
-  const ratio = averageTipMcpRatio(lm);
+  const metrics = fingerMetrics(points);
+  const ext = fingerState(metrics);
+  const ratio = ratioMeasure(points);
 
-  let best = { letter: null, confidence: 0 };
-  for (const letter of SUPPORTED_LETTERS) {
-    const parts = scoreLetter(letter, lm, ext, angles, ratio);
-    const score = parts.reduce((a, b) => a + b, 0) / parts.length;
-    if (score > best.confidence) best = { letter, confidence: score };
-  }
-  return { ...best, ext, ratio };
-}
+  const result = SUPPORTED_LETTERS.reduce(
+    (best, letter) => {
+      const checks = evaluateLetter(
+        letter,
+        points,
+        ext,
+        metrics,
+        ratio
+      );
 
-export function createStabilityFilter({ holdFrames = 12, minConf = 0.75 } = {}) {
-  let last = null;
-  let count = 0;
-  let locked = null;
+      const score =
+        checks.reduce((a, b) => a + b, 0) /
+        checks.length;
+
+      return score > best.confidence
+        ? { letter, confidence: score }
+        : best;
+    },
+    { letter: null, confidence: 0 }
+  );
 
   return {
-    push({ letter, confidence }) {
+    ...result,
+    ext,
+    ratio
+  };
+}
+
+export function createStabilityFilter(
+  { holdFrames = 12, minConf = 0.75 } = {}
+) {
+  let currentLetter = null;
+  let frames = 0;
+  let committedLetter = null;
+
+  return {
+    push(data) {
+      const { letter, confidence } = data;
+
       if (!letter || confidence < minConf) {
-        last = null;
-        count = 0;
-        return { committed: null, candidate: letter, progress: 0 };
+        currentLetter = null;
+        frames = 0;
+
+        return {
+          committed: null,
+          candidate: letter,
+          progress: 0
+        };
       }
-      if (letter === last) count++;
-      else { last = letter; count = 1; }
-      const progress = Math.min(1, count / holdFrames);
-      if (count >= holdFrames && letter !== locked) {
-        locked = letter;
-        return { committed: letter, candidate: letter, progress: 1 };
+
+      frames =
+        currentLetter === letter
+          ? frames + 1
+          : 1;
+
+      currentLetter = letter;
+
+      const progress =
+        Math.min(frames / holdFrames, 1);
+
+      if (
+        frames >= holdFrames &&
+        committedLetter !== letter
+      ) {
+        committedLetter = letter;
+
+        return {
+          committed: letter,
+          candidate: letter,
+          progress: 1
+        };
       }
-      return { committed: null, candidate: letter, progress };
+
+      return {
+        committed: null,
+        candidate: letter,
+        progress
+      };
     },
-    reset() { last = null; count = 0; locked = null; },
-    clearLock() { locked = null; },
+
+    reset() {
+      currentLetter = null;
+      frames = 0;
+      committedLetter = null;
+    },
+
+    clearLock() {
+      committedLetter = null;
+    }
   };
 }

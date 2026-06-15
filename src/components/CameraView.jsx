@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { loadHandLandmarker, attachCamera, stopCamera } from '../lib/handTracker.js';
 import { classify, createStabilityFilter } from '../lib/lgpAlphabet.js';
 
-const HAND_CONNECTIONS = [
+const CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,4],
   [0,5],[5,6],[6,7],[7,8],
   [5,9],[9,10],[10,11],[11,12],
@@ -11,163 +11,296 @@ const HAND_CONNECTIONS = [
   [0,17],
 ];
 
-export default function CameraView({ target, holdFrames, onRecognition, recognised }) {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const rafRef = useRef(0);
-  const filterRef = useRef(null);
-  if (!filterRef.current) {
-    filterRef.current = createStabilityFilter({ holdFrames, minConf: 0.78 });
-  }
-  const targetRef = useRef(target);
-  const onRecognitionRef = useRef(onRecognition);
-  const lastVideoTimeRef = useRef(-1);
-  const lastSentRef = useRef(null);
-  const [status, setStatus] = useState('A preparar a câmara…');
-  const [error, setError] = useState(null);
+export default function CameraView({
+  target,
+  holdFrames,
+  onRecognition,
+  recognised
+}) {
+  const cameraRef = useRef(null);
+  const overlayRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const animationRef = useRef(0);
 
-  useEffect(() => { targetRef.current = target; filterRef.current.clearLock(); }, [target]);
-  useEffect(() => { onRecognitionRef.current = onRecognition; }, [onRecognition]);
+  const trackerRef = useRef(
+    createStabilityFilter({
+      holdFrames,
+      minConf: 0.78
+    })
+  );
+
+  const targetLetterRef = useRef(target);
+  const callbackRef = useRef(onRecognition);
+  const lastFrameRef = useRef(-1);
+  const previousPayloadRef = useRef(null);
+
+  const [cameraStatus, setCameraStatus] = useState('A preparar a câmara…');
+  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
-    let cancelled = false;
-    let landmarker = null;
+    targetLetterRef.current = target;
+    trackerRef.current.clearLock();
+  }, [target]);
 
-    (async () => {
-      try {
-        setStatus('A carregar modelo…');
-        landmarker = await loadHandLandmarker();
-        if (cancelled) return;
-        setStatus('A ligar câmara…');
-        streamRef.current = await attachCamera(videoRef.current);
-        if (cancelled) return;
-        setStatus(null);
-        loop();
-      } catch (e) {
-        if (cancelled) return;
-        setError(e?.message || 'Erro desconhecido');
+  useEffect(() => {
+    callbackRef.current = onRecognition;
+  }, [onRecognition]);
+
+  useEffect(() => {
+    let disposed = false;
+    let detector = null;
+
+    const sendRecognition = (payload) => {
+      const previous = previousPayloadRef.current;
+
+      if (
+        previous &&
+        previous.letter === payload.letter &&
+        previous.candidate === payload.candidate &&
+        previous.committed === payload.committed &&
+        previous.progress === payload.progress
+      ) {
+        return;
       }
-    })();
 
-    function emit(payload) {
-      const prev = lastSentRef.current;
-      if (prev &&
-        prev.letter === payload.letter &&
-        prev.candidate === payload.candidate &&
-        prev.committed === payload.committed &&
-        prev.progress === payload.progress
-      ) return;
-      lastSentRef.current = payload;
-      onRecognitionRef.current?.(payload);
-    }
+      previousPayloadRef.current = payload;
+      callbackRef.current?.(payload);
+    };
 
-    function loop() {
-      if (cancelled) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas || !landmarker) return;
+    const processFrame = () => {
+      if (disposed) return;
 
-      if (video.readyState >= 2 && video.videoWidth && video.currentTime !== lastVideoTimeRef.current) {
-        lastVideoTimeRef.current = video.currentTime;
+      const video = cameraRef.current;
+      const canvas = overlayRef.current;
+
+      if (!video || !canvas || !detector) return;
+
+      const canProcess =
+        video.readyState >= 2 &&
+        video.videoWidth &&
+        video.currentTime !== lastFrameRef.current;
+
+      if (canProcess) {
+        lastFrameRef.current = video.currentTime;
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        let result;
-        try { result = landmarker.detectForVideo(video, performance.now()); }
-        catch (e) { result = null; }
+
+        let detectionResult = null;
+
+        try {
+          detectionResult = detector.detectForVideo(
+            video,
+            performance.now()
+          );
+        } catch {
+          detectionResult = null;
+        }
 
         const ctx = canvas.getContext('2d');
+
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        let rec = { letter: null, confidence: 0 };
-        if (result?.landmarks?.length) {
-          const lm = result.landmarks[0];
-          drawHand(ctx, lm, canvas.width, canvas.height);
-          rec = classify(lm);
+
+        let recognition = {
+          letter: null,
+          confidence: 0
+        };
+
+        if (detectionResult?.landmarks?.length) {
+          const landmarks = detectionResult.landmarks[0];
+
+          renderHand(
+            ctx,
+            landmarks,
+            canvas.width,
+            canvas.height
+          );
+
+          recognition = classify(landmarks);
         }
+
         ctx.restore();
-        const filt = filterRef.current.push(rec);
-        emit({
-          letter: rec.letter,
-          confidence: rec.confidence,
-          candidate: filt.candidate,
-          committed: filt.committed,
-          progress: filt.progress,
-          target: targetRef.current,
+
+        const stability =
+          trackerRef.current.push(recognition);
+
+        sendRecognition({
+          letter: recognition.letter,
+          confidence: recognition.confidence,
+          candidate: stability.candidate,
+          committed: stability.committed,
+          progress: stability.progress,
+          target: targetLetterRef.current
         });
       }
-      rafRef.current = requestAnimationFrame(loop);
-    }
+
+      animationRef.current =
+        requestAnimationFrame(processFrame);
+    };
+
+    const startCamera = async () => {
+      try {
+        setCameraStatus('A carregar modelo…');
+
+        detector = await loadHandLandmarker();
+
+        if (disposed) return;
+
+        setCameraStatus('A ligar câmara…');
+
+        mediaStreamRef.current =
+          await attachCamera(cameraRef.current);
+
+        if (disposed) return;
+
+        setCameraStatus(null);
+
+        processFrame();
+      } catch (err) {
+        if (disposed) return;
+
+        setCameraError(
+          err?.message || 'Erro desconhecido'
+        );
+      }
+    };
+
+    startCamera();
 
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafRef.current);
-      stopCamera(streamRef.current);
-      streamRef.current = null;
-      lastVideoTimeRef.current = -1;
+      disposed = true;
+
+      cancelAnimationFrame(animationRef.current);
+
+      stopCamera(mediaStreamRef.current);
+
+      mediaStreamRef.current = null;
+      lastFrameRef.current = -1;
     };
   }, []);
 
-  const progress = recognised?.progress || 0;
-  const candidate = recognised?.candidate;
-  const matches = candidate && candidate === target;
+  const progressValue = recognised?.progress ?? 0;
+  const detectedLetter = recognised?.candidate;
+  const isCorrect =
+    detectedLetter && detectedLetter === target;
 
   return (
     <div className="cam-wrap">
-      <video ref={videoRef} playsInline muted className="cam-video" />
-      <canvas ref={canvasRef} className="cam-canvas" />
+      <video
+        ref={cameraRef}
+        playsInline
+        muted
+        className="cam-video"
+      />
 
-      {/* Overlay: letra alvo no canto superior esquerdo */}
-      {!status && !error && (
+      <canvas
+        ref={overlayRef}
+        className="cam-canvas"
+      />
+
+      {!cameraStatus && !cameraError && (
         <div className="cam-target-badge">
-          <span className="cam-target-label">faz</span>
-          <span className="cam-target-letter">{target}</span>
+          <span className="cam-target-label">
+            faz
+          </span>
+          <span className="cam-target-letter">
+            {target}
+          </span>
         </div>
       )}
 
-      {/* Overlay: o que está a detetar, no canto superior direito */}
-      {!status && !error && candidate && (
-        <div className={`cam-detected-badge ${matches ? 'match' : ''}`}>
-          <span className="cam-target-label">vejo</span>
-          <span className="cam-target-letter">{candidate}</span>
-        </div>
-      )}
+      {!cameraStatus &&
+        !cameraError &&
+        detectedLetter && (
+          <div
+            className={`cam-detected-badge ${
+              isCorrect ? 'match' : ''
+            }`}
+          >
+            <span className="cam-target-label">
+              vejo
+            </span>
+            <span className="cam-target-letter">
+              {detectedLetter}
+            </span>
+          </div>
+        )}
 
-      {/* Barra de progresso no fundo da câmara */}
-      {!status && !error && progress > 0 && (
-        <div className="cam-progress-bar">
-          <div className="cam-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-        </div>
-      )}
+      {!cameraStatus &&
+        !cameraError &&
+        progressValue > 0 && (
+          <div className="cam-progress-bar">
+            <div
+              className="cam-progress-fill"
+              style={{
+                width: `${Math.round(
+                  progressValue * 100
+                )}%`
+              }}
+            />
+          </div>
+        )}
 
-      {/* Loading / erro */}
-      {(status || error) && (
-        <div className={`cam-overlay ${error ? 'error' : ''}`}>
-          {!error && <div className="cam-spinner" />}
-          <p>{error ? `Erro: ${error}` : status}</p>
-          {error && <p className="cam-overlay-hint">Verifica as permissões da câmara e recarrega.</p>}
+      {(cameraStatus || cameraError) && (
+        <div
+          className={`cam-overlay ${
+            cameraError ? 'error' : ''
+          }`}
+        >
+          {!cameraError && (
+            <div className="cam-spinner" />
+          )}
+
+          <p>
+            {cameraError
+              ? `Erro: ${cameraError}`
+              : cameraStatus}
+          </p>
+
+          {cameraError && (
+            <p className="cam-overlay-hint">
+              Verifica as permissões da
+              câmara e recarrega.
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function drawHand(ctx, lm, w, h) {
+function renderHand(ctx, landmarks, width, height) {
   ctx.strokeStyle = 'rgba(255,255,255,0.55)';
   ctx.lineWidth = 2;
-  for (const [a, b] of HAND_CONNECTIONS) {
+
+  CONNECTIONS.forEach(([start, end]) => {
     ctx.beginPath();
-    ctx.moveTo(lm[a].x * w, lm[a].y * h);
-    ctx.lineTo(lm[b].x * w, lm[b].y * h);
+    ctx.moveTo(
+      landmarks[start].x * width,
+      landmarks[start].y * height
+    );
+    ctx.lineTo(
+      landmarks[end].x * width,
+      landmarks[end].y * height
+    );
     ctx.stroke();
-  }
-  for (const p of lm) {
+  });
+
+  landmarks.forEach((point) => {
     ctx.beginPath();
-    ctx.arc(p.x * w, p.y * h, 4, 0, Math.PI * 2);
+    ctx.arc(
+      point.x * width,
+      point.y * height,
+      4,
+      0,
+      Math.PI * 2
+    );
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.fill();
-  }
+  });
 }

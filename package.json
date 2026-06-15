@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Jogo de inclusão social: identificar palavras de 4 letras em Língua Gestual Portuguesa, letra a letra.",
+  "description": "Jogo de identificar a letra pelos gestos",
   "scripts": {
     "predev": "node scripts/download-model.js",
     "prebuild": "node scripts/download-model.js",
