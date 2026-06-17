@@ -96,8 +96,8 @@ export default function App() {
         <div className="splash-inner">
 
           <div className="splash-logo">
-            <span className="splash-g">G</span>
-            <span className="splash-rest">estos</span>
+            <span className="splash-g">TREMU</span>
+            <span className="splash-rest">NA OFICINA</span>
           </div>
 
           <p className="splash-sub">

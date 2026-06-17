@@ -25,7 +25,7 @@ Letras com movimento (J, Z) ficam fora desta versão.
 Está em [`src/lib/words.js`](src/lib/words.js). São ~25 palavras pt-PT de
 quatro letras, todas formadas apenas pelas letras suportadas acima.
 
-## Como correr
+## Como instalar e testas
 
 ```bash
 npm install
@@ -78,3 +78,7 @@ scripts/
   razoável e fundo neutro.
 - O sistema é deliberadamente *stand-alone*: nenhum estado do utilizador é
   enviado para fora do dispositivo.
+
+
+# COMO CORRER !
+No terminal: "npm run dev"

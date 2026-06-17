@@ -54,13 +54,13 @@ body {
 }
 
 .splash-g {
-  font-size: clamp(80px, 20vw, 120px);
+  font-size: clamp(32px, 9vw, 56px);
   font-weight: 900;
   color: var(--accent2);
 }
 
 .splash-rest {
-  font-size: clamp(80px, 20vw, 120px);
+  font-size: clamp(32px, 9vw, 56px);
   font-weight: 900;
   color: var(--fg);
 }
