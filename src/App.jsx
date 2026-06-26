@@ -270,7 +270,6 @@ export default function App() {
         hint={round.clue}
         recognised={detection}
         attemptsLeft={attemptsLeft}
-        onNext={loadNextWord}
       />
 
       {guideVisible && (
