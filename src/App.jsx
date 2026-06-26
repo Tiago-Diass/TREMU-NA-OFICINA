@@ -1,10 +1,10 @@
 import React, { useState, useRef, useCallback } from "react";
 
-import CameraView from "./components/CameraView.jsx";
-import GamePanel from "./components/GamePanel.jsx";
-import AlphabetGuide from "./components/AlphabetGuide.jsx";
+import CameraView from "./componentes/CameraView.jsx";
+import GamePanel from "./componentes/GamePanel.jsx";
+import AlphabetGuide from "./componentes/AlphabetGuide.jsx";
 
-import { pickRandomWord, scoreGuess } from "./lib/words.js";
+import { pickRandomWord, scoreGuess } from "./libraria/words.js";
 
 const REQUIRED_FRAMES = 14;
 const MAX_ATTEMPTS = 6;
@@ -286,6 +286,7 @@ export default function App() {
         attemptsLeft={attemptsLeft}
         onUndo={undoLetter}
         canUndo={status === "playing" && currentPos > 0}
+        onNext={loadNextWord}
       />
 
       {guideVisible && (

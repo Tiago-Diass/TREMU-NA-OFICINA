@@ -14,7 +14,7 @@ const HAND = {
 
 export const SUPPORTED_LETTERS = [
   'A', 'B', 'C', 'D', 'F', 'I',
-  'L', 'O', 'U', 'V', 'W', 'Y'
+  'L', 'M', 'N', 'O', 'U', 'V', 'W', 'Y'
 ];
 
 const vec = (a, b) => [
@@ -111,6 +111,17 @@ function evaluateLetter(letter, points, open, metrics, ratio) {
   const thumbReach =
     gap(points[HAND.T4], points[HAND.I1]) / scale;
 
+  // Quão perto está a ponta do polegar dos "nós" (MCP) dos outros dedos.
+  // Útil para distinguir M e N: em ambas as letras a mão está fechada
+  // (punho), mas o polegar fica encostado entre dedos diferentes.
+  // N -> polegar entre o indicador e o médio (perto de thumbReach/thumbMiddle).
+  // M -> polegar entre o anelar e o mindinho (perto de thumbRingKnuckle/thumbPinkyKnuckle).
+  const thumbRingKnuckle =
+    gap(points[HAND.T4], points[HAND.R1]) / scale;
+
+  const thumbPinkyKnuckle =
+    gap(points[HAND.T4], points[HAND.P1]) / scale;
+
   const thumbVector =
     vec(points[HAND.T4], points[HAND.T2]);
 
@@ -194,6 +205,22 @@ function evaluateLetter(letter, points, open, metrics, ratio) {
       !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
       maximum(ratio, 0.55, 0.2),
       minimum(thumbMiddle, 0.6, 0.3)
+    ],
+
+    N: [
+      !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      // polegar encostado perto do indicador/médio (fechado "por dentro")
+      maximum(thumbReach, 0.4, 0.25),
+      // e claramente mais perto do indicador do que do mindinho
+      minimum(thumbPinkyKnuckle - thumbReach, 0.12, 0.3)
+    ],
+
+    M: [
+      !open.index && !open.middle && !open.ring && !open.pinky ? 1 : 0,
+      // polegar encostado perto do anelar/mindinho
+      maximum(thumbRingKnuckle, 0.4, 0.25),
+      // e claramente mais perto do mindinho do que do indicador
+      minimum(thumbReach - thumbPinkyKnuckle, 0.12, 0.3)
     ],
   };
 

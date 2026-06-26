@@ -8,6 +8,8 @@ const SUPPORTED_SIGNS = [
   ['F', 'Polegar e indicador em círculo; médio, anelar e mindinho esticados.'],
   ['I', 'Punho fechado com o mindinho esticado para cima.'],
   ['L', 'Polegar e indicador formam um L; restantes dedos fechados.'],
+  ['M', 'Punho fechado, polegar encostado por dentro perto do anelar/mindinho.'],
+  ['N', 'Punho fechado, polegar encostado por dentro perto do indicador/médio.'],
   ['O', 'Todos os dedos curvados a tocar no polegar, criando um O.'],
   ['U', 'Indicador e médio juntos e esticados para cima.'],
   ['V', 'Indicador e médio esticados em V afastados.'],

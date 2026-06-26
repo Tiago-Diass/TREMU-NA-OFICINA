@@ -57,6 +57,23 @@ export const WORDS = [
   ['WIFI', 'Ligação à internet sem cabos'],
   ['CAIO', 'Eu caio no chão sem querer'],
   ['BAIO', 'Cor de um cavalo castanho-claro'],
+  ['BAFO', 'Cheiro que sai da boca, por vezes desagradável'],
+  ['ALVO', 'O que se tenta acertar com uma flecha'],
+  ['DUAL', 'Diz-se de um sistema com dois elementos'],
+  ['LAVO', 'Eu ___ a loiça depois do almoço'],
+  ['AFIO', 'Eu ___ a faca antes de cortar'],
+  ['FALO', 'Eu ___ português todos os dias'],
+  ['BOAL', 'Casta de uva usada no vinho da Madeira'],
+  ['MOLA', 'Pequeno objeto que prende a roupa no estendal'],
+  ['LIMA', 'Fruto cítrico verde, ou ferramenta para alisar metal'],
+  ['NADA', 'O contrário de tudo'],
+  ['FAMA', 'Ser muito conhecido: ter ___'],
+  ['MULA', 'Animal, cruzamento entre cavalo e burro'],
+  ['DAMA', 'Senhora elegante, ou peça do jogo de damas'],
+  ['CAMA', 'Onde dormimos à noite'],
+  ['MODA', 'Tendência de vestuário que está sempre a mudar'],
+  ['MOFO', 'Fungo que aparece no pão ou em paredes húmidas'],
+  ['FUMO', 'Sai de uma chaminé ou de um cigarro'],
 ];
 
 // Função para escolher uma palavra aleatória, evitando as mais recentes para não repetir muito

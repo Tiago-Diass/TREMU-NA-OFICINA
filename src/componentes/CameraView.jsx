@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { loadHandLandmarker, attachCamera, stopCamera } from '../lib/handTracker.js';
-import { classify, createStabilityFilter } from '../lib/lgpAlphabet.js';
+import { loadHandLandmarker, attachCamera, stopCamera } from '../libraria/handTracker.js';
+import { classify, createStabilityFilter } from '../libraria/lgpAlphabet.js';
 
 const CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,4],
