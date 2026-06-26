@@ -66,3 +66,38 @@ export function pickRandomWord(history = []) {
   const list = pool.length ? pool : WORDS;
   return list[Math.floor(Math.random() * list.length)];
 }
+
+// Compara uma tentativa com a palavra secreta, devolvendo uma cor por letra:
+// 'green'  -> letra certa na posição certa
+// 'yellow' -> letra existe na palavra, mas noutra posição
+// 'red'    -> letra não existe na palavra
+// Lida corretamente com letras repetidas (ex.: COCO, FOFO, DADA).
+export function scoreGuess(guess, answer) {
+  const guessChars = [...guess];
+  const answerChars = [...answer];
+  const colors = new Array(guessChars.length).fill('red');
+
+  const remaining = {};
+  answerChars.forEach((ch) => {
+    remaining[ch] = (remaining[ch] || 0) + 1;
+  });
+
+  // 1ª passagem: acertos exatos (verde)
+  guessChars.forEach((ch, i) => {
+    if (ch === answerChars[i]) {
+      colors[i] = 'green';
+      remaining[ch] -= 1;
+    }
+  });
+
+  // 2ª passagem: letra existe, posição errada (amarelo)
+  guessChars.forEach((ch, i) => {
+    if (colors[i] === 'green') return;
+    if (remaining[ch] > 0) {
+      colors[i] = 'yellow';
+      remaining[ch] -= 1;
+    }
+  });
+
+  return colors;
+}

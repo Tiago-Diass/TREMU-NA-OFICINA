@@ -1,21 +1,26 @@
-import React, { useState, useRef, useMemo, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 
 import CameraView from "./components/CameraView.jsx";
 import GamePanel from "./components/GamePanel.jsx";
 import AlphabetGuide from "./components/AlphabetGuide.jsx";
 
-import { pickRandomWord } from "./lib/words.js";
+import { pickRandomWord, scoreGuess } from "./lib/words.js";
 
 const REQUIRED_FRAMES = 14;
+const MAX_ATTEMPTS = 6;
 
-function createChallenge(previousWords) {
+function createRound(previousWords) {
   const [word, hint] = pickRandomWord(previousWords);
 
   return {
     answer: word,
     clue: hint,
-    chars: [...word]
+    length: word.length
   };
+}
+
+function emptyGuess(length) {
+  return new Array(length).fill('');
 }
 
 export default function App() {
@@ -23,15 +28,19 @@ export default function App() {
 
   const [playing, setPlaying] = useState(false);
 
-  const [challenge, setChallenge] = useState(() =>
-    createChallenge([])
-  );
+  const [round, setRound] = useState(() => createRound([]));
 
-  const [currentChar, setCurrentChar] = useState(0);
+  const [guesses, setGuesses] = useState([]);
+  const [currentGuess, setCurrentGuess] = useState(() =>
+    emptyGuess(round.length)
+  );
+  const [currentPos, setCurrentPos] = useState(0);
+  const [status, setStatus] = useState("playing"); // playing | won | lost
 
   const [points, setPoints] = useState(0);
-
   const [completedWords, setCompletedWords] = useState(0);
+
+  const [lockKey, setLockKey] = useState(0);
 
   const [detection, setDetection] = useState({
     letter: null,
@@ -41,53 +50,91 @@ export default function App() {
 
   const [guideVisible, setGuideVisible] = useState(false);
 
-  const targetLetter = useMemo(
-    () => challenge.chars[currentChar],
-    [challenge, currentChar]
-  );
+  const attemptsLeft = MAX_ATTEMPTS - guesses.length;
 
   const loadNextWord = useCallback(() => {
     usedWords.current = [
       ...usedWords.current,
-      challenge.answer
+      round.answer
     ].slice(-20);
 
-    setChallenge(createChallenge(usedWords.current));
-    setCurrentChar(0);
-  }, [challenge]);
+    const next = createRound(usedWords.current);
 
-  const nextStep = useCallback(() => {
-    const isLastLetter =
-      currentChar >= challenge.chars.length - 1;
-
-    if (!isLastLetter) {
-      setCurrentChar((value) => value + 1);
-      setPoints((value) => value + 10);
-      return;
-    }
-
-    setPoints((value) => value + 25);
-    setCompletedWords((value) => value + 1);
-
-    loadNextWord();
-  }, [currentChar, challenge, loadNextWord]);
+    setRound(next);
+    setGuesses([]);
+    setCurrentGuess(emptyGuess(next.length));
+    setCurrentPos(0);
+    setStatus("playing");
+    setLockKey((value) => value + 1);
+  }, [round]);
 
   const skipWord = useCallback(() => {
     loadNextWord();
   }, [loadNextWord]);
 
+  const submitGuess = useCallback(
+    (letters) => {
+      const guessWord = letters.join("");
+      const colors = scoreGuess(guessWord, round.answer);
+
+      const greens = colors.filter((c) => c === "green").length;
+      const yellows = colors.filter((c) => c === "yellow").length;
+
+      setPoints((value) => value + greens * 10 + yellows * 3);
+
+      setGuesses((prev) => [
+        ...prev,
+        { letters, colors }
+      ]);
+
+      const won = guessWord === round.answer;
+      const attemptsUsed = guesses.length + 1;
+
+      if (won) {
+        setPoints((value) => value + 30);
+        setCompletedWords((value) => value + 1);
+        setStatus("won");
+      } else if (attemptsUsed >= MAX_ATTEMPTS) {
+        setStatus("lost");
+      } else {
+        setCurrentGuess(emptyGuess(round.length));
+        setCurrentPos(0);
+        setLockKey((value) => value + 1);
+      }
+    },
+    [round, guesses]
+  );
+
+  const commitLetter = useCallback(
+    (letter) => {
+      if (status !== "playing") return;
+      if (currentPos >= round.length) return;
+
+      const next = [...currentGuess];
+      next[currentPos] = letter;
+
+      const nextPos = currentPos + 1;
+
+      setCurrentGuess(next);
+      setCurrentPos(nextPos);
+      setLockKey((value) => value + 1);
+
+      if (nextPos >= round.length) {
+        submitGuess(next);
+      }
+    },
+    [status, currentPos, currentGuess, round, submitGuess]
+  );
+
   const handleRecognition = useCallback(
     (result) => {
       setDetection(result);
 
-      if (
-        result.committed &&
-        result.committed === targetLetter
-      ) {
-        nextStep();
+      if (result.committed) {
+        commitLetter(result.committed);
       }
     },
-    [targetLetter, nextStep]
+    [commitLetter]
   );
 
   if (!playing) {
@@ -101,23 +148,26 @@ export default function App() {
           </div>
 
           <p className="splash-sub">
-            Aprende o alfabeto da Língua Gestual Portuguesa jogando
+            Adivinha a palavra secreta soletrando-a com a mão, à la Termo
           </p>
 
           <div className="splash-how">
             <div className="how-step">
               <span className="how-num">1</span>
-              <span>Recebe uma palavra para completar</span>
+              <span>A app escolhe uma palavra secreta de 4 letras</span>
             </div>
 
             <div className="how-step">
               <span className="how-num">2</span>
-              <span>Mostra cada gesto à câmara</span>
+              <span>Soletra a tua tentativa, letra a letra, à câmara</span>
             </div>
 
             <div className="how-step">
               <span className="how-num">3</span>
-              <span>Espera pela confirmação da letra</span>
+              <span>
+                Verde = letra e posição certas · Amarelo = letra certa,
+                posição errada · Vermelho = letra não existe
+              </span>
             </div>
           </div>
 
@@ -202,17 +252,25 @@ export default function App() {
       </header>
 
       <CameraView
-        target={targetLetter}
         holdFrames={REQUIRED_FRAMES}
         recognised={detection}
         onRecognition={handleRecognition}
+        lockKey={lockKey}
+        active={status === "playing"}
       />
 
       <GamePanel
-        word={challenge.answer}
-        hint={challenge.clue}
-        letterIndex={currentChar}
+        wordLength={round.length}
+        maxAttempts={MAX_ATTEMPTS}
+        guesses={guesses}
+        currentGuess={currentGuess}
+        currentPos={currentPos}
+        status={status}
+        secretWord={round.answer}
+        hint={round.clue}
         recognised={detection}
+        attemptsLeft={attemptsLeft}
+        onNext={loadNextWord}
       />
 
       {guideVisible && (
