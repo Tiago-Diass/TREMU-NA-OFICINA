@@ -11,7 +11,9 @@ export default function GamePanel({
   hint,
   recognised,
   attemptsLeft,
-  onNext
+  onNext,
+  onUndo,
+  canUndo
 }) {
   const [hintOpen, setHintOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -99,9 +101,21 @@ export default function GamePanel({
       </div>
 
       {status === 'playing' && (
-        <p className="attempts-left">
-          {attemptsLeft} {attemptsLeft === 1 ? 'tentativa' : 'tentativas'} restantes
-        </p>
+        <div className="attempts-row">
+          <p className="attempts-left">
+            {attemptsLeft} {attemptsLeft === 1 ? 'tentativa' : 'tentativas'} restantes
+          </p>
+
+          <button
+            type="button"
+            className="btn-undo"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Apagar a última letra lida"
+          >
+            ⌫ apagar letra
+          </button>
+        </div>
       )}
 
       {status !== 'playing' && (

@@ -15,7 +15,8 @@ export default function CameraView({
   target,
   holdFrames,
   onRecognition,
-  recognised
+  recognised,
+  lockKey
 }) {
   const cameraRef = useRef(null);
   const overlayRef = useRef(null);
@@ -41,6 +42,13 @@ export default function CameraView({
     targetLetterRef.current = target;
     trackerRef.current.clearLock();
   }, [target]);
+
+  // Sempre que a App avança de letra (ou usa o botão de apagar),
+  // o lockKey muda e limpamos o "lock" de letra já confirmada,
+  // para podermos voltar a reconhecer a mesma letra de imediato.
+  useEffect(() => {
+    trackerRef.current.clearLock();
+  }, [lockKey]);
 
   useEffect(() => {
     callbackRef.current = onRecognition;

@@ -126,6 +126,20 @@ export default function App() {
     [status, currentPos, currentGuess, round, submitGuess]
   );
 
+  const undoLetter = useCallback(() => {
+    if (status !== "playing") return;
+    if (currentPos <= 0) return;
+
+    const next = [...currentGuess];
+    next[currentPos - 1] = '';
+
+    setCurrentGuess(next);
+    setCurrentPos((value) => value - 1);
+    // Força a reiniciar o filtro de estabilidade da câmara,
+    // para não voltar a "ler" de imediato a mesma letra errada.
+    setLockKey((value) => value + 1);
+  }, [status, currentPos, currentGuess]);
+
   const handleRecognition = useCallback(
     (result) => {
       setDetection(result);
@@ -270,6 +284,8 @@ export default function App() {
         hint={round.clue}
         recognised={detection}
         attemptsLeft={attemptsLeft}
+        onUndo={undoLetter}
+        canUndo={status === "playing" && currentPos > 0}
       />
 
       {guideVisible && (
