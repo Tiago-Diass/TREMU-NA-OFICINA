@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { loadHandLandmarker, attachCamera, stopCamera } from '../libraria/handTracker.js';
-import { classify, createStabilityFilter } from '../libraria/lgpAlphabet.js';
+import { loadHandLandmarker, attachCamera, stopCamera } from '../libraria/rastreadorMao.js';
+import { classify, createStabilityFilter } from '../libraria/alfabetoSuportado.js';
 
 const CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,4],

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useCallback } from "react";
 
-import CameraView from "./componentes/CameraView.jsx";
-import GamePanel from "./componentes/GamePanel.jsx";
-import AlphabetGuide from "./componentes/AlphabetGuide.jsx";
+import CameraView from "./componentes/Camara.jsx";
+import GamePanel from "./componentes/PainelJogo.jsx";
+import AlphabetGuide from "./componentes/AlfabetoGuia.jsx";
 
-import { pickRandomWord, scoreGuess } from "./libraria/words.js";
+import { pickRandomWord, scoreGuess } from "./libraria/palavras.js";
 
 const REQUIRED_FRAMES = 14;
 const MAX_ATTEMPTS = 6;
