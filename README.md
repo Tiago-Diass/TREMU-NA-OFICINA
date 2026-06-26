@@ -17,13 +17,27 @@ APIs externas a serem chamadas durante o jogo.
 
 ## Letras suportadas
 
-Apenas sinais **estáticos** a uma mão: `A B C D F I L O U V W Y`.
+Apenas sinais **estáticos** a uma mão: `A B C D F I L M N O U V W Y`.
 Letras com movimento (J, Z) ficam fora desta versão.
+
+> **Nota:** `M` e `N` foram adicionadas mais recentemente e usam uma
+> heurística baseada na posição da ponta do polegar em relação aos "nós"
+> dos outros dedos (mão fechada). Podem precisar de afinação de limiares em
+> [`src/lib/lgpAlphabet.js`](src/lib/lgpAlphabet.js) se não forem bem
+> reconhecidas em condições reais.
 
 ## Banco de palavras
 
-Está em [`src/lib/words.js`](src/lib/words.js). São ~25 palavras pt-PT de
+Está em [`src/lib/words.js`](src/lib/words.js). São ~75 palavras pt-PT de
 quatro letras, todas formadas apenas pelas letras suportadas acima.
+
+## Controlos durante o jogo
+
+- **`»`** (canto superior direito) — salta para uma palavra nova.
+- **`⌫ apagar letra`** — apaga a última letra já confirmada da tentativa
+  atual, para quando a câmara "lê" um gesto errado ou sem querer.
+- **`Próxima palavra »`** — aparece no fim da ronda (ganha ou perdida) e
+  avança para a palavra seguinte.
 
 ## Como instalar e testas
 
